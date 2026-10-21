@@ -111,7 +111,26 @@ class AuthResourceTest {
                 .statusCode(200)
                 .body("phone", equalTo("1199990000"))
                 .body("street", equalTo("Calle Falsa 123"))
-                .body("city", equalTo("Rosario"));
+                .body("city", equalTo("Rosario"))
+                .body("documentNumber", equalTo("30111222"));
+
+        given()
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(ContentType.JSON)
+                .body("""
+                        {
+                          "firstName": "Ana",
+                          "lastName": "Perez",
+                          "documentNumber": "99999999",
+                          "bio": "Lectora de la sección de economía."
+                        }
+                        """)
+                .when()
+                .patch("/api/auth/me")
+                .then()
+                .statusCode(200)
+                .body("documentNumber", equalTo("30111222"))
+                .body("bio", equalTo("Lectora de la sección de economía."));
     }
 
     @Test

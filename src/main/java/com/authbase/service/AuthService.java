@@ -251,7 +251,7 @@ public class AuthService {
         }
         UserProfiles.set(
                 user,
-                request.documentNumber(),
+                lockedDocument(user, request.documentNumber()),
                 request.phone(),
                 request.birthDate(),
                 request.street(),
@@ -370,6 +370,13 @@ public class AuthService {
             throw ApiException.badRequest("SPECIALTY_REQUIRED", "La especialidad debe tener entre 2 y 120 caracteres");
         }
         return clean;
+    }
+
+    private static String lockedDocument(User user, String requested) {
+        if (user.documentNumber != null && !user.documentNumber.isBlank()) {
+            return user.documentNumber;
+        }
+        return requested;
     }
 
     private static String cleanBio(String bio) {
