@@ -64,8 +64,7 @@ public class ArticleResource {
     @Path("/slug/{slug}/view")
     @Consumes(MediaType.APPLICATION_JSON)
     public ViewCountResponse view(@PathParam("slug") String slug, RecordViewRequest request) {
-        String visitorId = request == null ? null : request.visitorId();
-        return new ViewCountResponse(articleService.recordView(slug, currentUser.optional(), visitorId));
+        return new ViewCountResponse(articleService.recordView(slug));
     }
 
     @GET

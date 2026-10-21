@@ -119,7 +119,7 @@ class JournalismFlowTest {
                 .post("/api/articles/slug/" + slug + "/view")
                 .then()
                 .statusCode(200)
-                .body("viewCount", equalTo(1));
+                .body("viewCount", equalTo(2));
 
         given()
                 .header("Authorization", "Bearer " + journalistToken)
@@ -129,7 +129,7 @@ class JournalismFlowTest {
                 .post("/api/articles/slug/" + slug + "/view")
                 .then()
                 .statusCode(200)
-                .body("viewCount", equalTo(1));
+                .body("viewCount", equalTo(3));
 
         given()
                 .header("Authorization", "Bearer " + readerToken)

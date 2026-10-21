@@ -6,7 +6,6 @@ import com.authbase.api.dto.ArticleWriteRequest;
 import com.authbase.domain.Article;
 import com.authbase.domain.ArticlePublishedEvent;
 import com.authbase.domain.ArticleStatus;
-import com.authbase.domain.ArticleView;
 import com.authbase.domain.Category;
 import com.authbase.domain.Follow;
 import com.authbase.domain.Role;
@@ -17,23 +16,15 @@ import com.authbase.helpers.Slugs;
 import com.authbase.helpers.UserProfiles;
 import com.authbase.service.storage.MediaStore;
 import com.authbase.service.storage.UploadedFile;
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
-import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class ArticleService {
-
-    private static final Pattern VISITOR_ID = Pattern.compile(
-            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-    );
 
     private final CategoryService categoryService;
     private final MediaStore mediaStore;
@@ -94,20 +85,11 @@ public class ArticleService {
     }
 
     @Transactional
-    public long recordView(String slug, User viewer, String visitorId) {
+    public long recordView(String slug) {
         Article article = Article.<Article>find("slug = ?1 and status = ?2", slug, ArticleStatus.PUBLISHED)
                 .firstResultOptional()
                 .orElseThrow(() -> ApiException.notFound("ARTICLE_NOT_FOUND", "No se encontró la nota"));
-        if (viewer != null && viewer.id.equals(article.author.id)) {
-            return views(article);
-        }
-        String viewerKey = viewer != null ? "u:" + viewer.id : anonymousKey(visitorId);
-        if (viewerKey == null) {
-            return views(article);
-        }
-        if (rememberView(article, viewerKey)) {
-            article.viewCount = views(article) + 1;
-        }
+        article.viewCount = views(article) + 1;
         return views(article);
     }
 
@@ -269,52 +251,6 @@ public class ArticleService {
             Article existing = Article.find("slug", candidate).firstResult();
             return existing != null && (currentId == null || !existing.id.equals(currentId));
         });
-    }
-
-    private static boolean rememberView(Article article, String viewerKey) {
-        String articleId = article.id;
-        AtomicBoolean inserted = new AtomicBoolean(false);
-        try {
-            QuarkusTransaction.requiringNew().run(() -> {
-                if (ArticleView.count("article.id = ?1 and viewerKey = ?2", articleId, viewerKey) > 0) {
-                    return;
-                }
-                Article managed = Article.findById(articleId);
-                ArticleView view = new ArticleView();
-                view.article = managed;
-                view.viewerKey = viewerKey;
-                view.persistAndFlush();
-                inserted.set(true);
-            });
-        } catch (RuntimeException ex) {
-            if (isDuplicateView(ex)) {
-                return false;
-            }
-            throw ex;
-        }
-        return inserted.get();
-    }
-
-    private static boolean isDuplicateView(Throwable error) {
-        Throwable current = error;
-        while (current != null) {
-            if (current instanceof PersistenceException) {
-                return true;
-            }
-            String message = current.getMessage();
-            if (message != null && (message.contains("uk_article_view_viewer") || message.contains("Duplicate"))) {
-                return true;
-            }
-            current = current.getCause();
-        }
-        return false;
-    }
-
-    private static String anonymousKey(String visitorId) {
-        if (visitorId == null || !VISITOR_ID.matcher(visitorId).matches()) {
-            return null;
-        }
-        return "v:" + visitorId.toLowerCase();
     }
 
     private static long views(Article article) {

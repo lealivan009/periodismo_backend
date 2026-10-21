@@ -45,7 +45,7 @@ public class MediaResource {
     private Response stream(String relative, String filename) {
         return Response.ok(mediaStore.open(relative), mediaStore.mediaType(relative))
                 .header("Content-Disposition", "inline; filename=\"" + filename + "\"")
-                .header("Cache-Control", "public, max-age=3600")
+                .header("Cache-Control", "public, max-age=31536000, immutable")
                 .build();
     }
 }
