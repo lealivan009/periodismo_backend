@@ -10,10 +10,14 @@ import com.authbase.api.dto.RegisterRequest;
 import com.authbase.api.dto.ResetPasswordRequest;
 import com.authbase.api.dto.UpdateProfileRequest;
 import com.authbase.api.dto.UserResponse;
+import com.authbase.error.ApiException;
 import com.authbase.service.AuthService;
+import com.authbase.service.storage.UploadedFile;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
@@ -24,6 +28,11 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @Path("/api/auth")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -34,11 +43,13 @@ public class AuthResource {
     private final AuthService authService;
     private final SecurityIdentity identity;
     private final JsonWebToken jwt;
+    private final Validator validator;
 
-    public AuthResource(AuthService authService, SecurityIdentity identity, JsonWebToken jwt) {
+    public AuthResource(AuthService authService, SecurityIdentity identity, JsonWebToken jwt, Validator validator) {
         this.authService = authService;
         this.identity = identity;
         this.jwt = jwt;
+        this.validator = validator;
     }
 
     @POST
@@ -46,6 +57,48 @@ public class AuthResource {
     @Operation(summary = "Crear una cuenta")
     public AuthResponse register(@Valid RegisterRequest request) {
         return authService.register(request);
+    }
+
+    @POST
+    @Path("/register-journalist")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Solicitar una cuenta de periodista")
+    public AuthResponse registerJournalist(
+            @RestForm String email,
+            @RestForm String password,
+            @RestForm String firstName,
+            @RestForm String lastName,
+            @RestForm String specialty,
+            @RestForm String bio,
+            @RestForm String documentNumber,
+            @RestForm String phone,
+            @RestForm String birthDate,
+            @RestForm String street,
+            @RestForm String city,
+            @RestForm String province,
+            @RestForm String postalCode,
+            @RestForm("degree") FileUpload degree
+    ) {
+        RegisterRequest request = new RegisterRequest(
+                email,
+                password,
+                firstName,
+                lastName,
+                blankToNull(documentNumber),
+                blankToNull(phone),
+                parseBirthDate(birthDate),
+                blankToNull(street),
+                blankToNull(city),
+                blankToNull(province),
+                blankToNull(postalCode)
+        );
+        var violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            ConstraintViolation<RegisterRequest> violation = violations.iterator().next();
+            throw ApiException.badRequest("VALIDATION", violation.getMessage());
+        }
+        UploadedFile file = Uploads.read(degree);
+        return authService.registerJournalist(request, specialty, bio, file);
     }
 
     @POST
@@ -102,6 +155,15 @@ public class AuthResource {
     }
 
     @POST
+    @Path("/me/avatar")
+    @Authenticated
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Operation(summary = "Actualizar la foto de perfil")
+    public UserResponse updateAvatar(@RestForm("file") FileUpload file) {
+        return authService.updateAvatar(currentUserId(), Uploads.read(file));
+    }
+
+    @POST
     @Path("/change-password")
     @Authenticated
     @Operation(summary = "Cambiar contraseña y revocar sesiones")
@@ -112,8 +174,33 @@ public class AuthResource {
 
     private String currentUserId() {
         if (identity.isAnonymous()) {
-            throw com.authbase.error.ApiException.unauthorized("UNAUTHORIZED", "Sesión inválida");
+            throw ApiException.unauthorized("UNAUTHORIZED", "Sesión inválida");
         }
         return jwt.getSubject();
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private static LocalDate parseBirthDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            LocalDate date = LocalDate.parse(value.trim());
+            if (!date.isBefore(LocalDate.now())) {
+                throw ApiException.badRequest(
+                        "INVALID_DATE",
+                        "La fecha de nacimiento no puede ser futura"
+                );
+            }
+            return date;
+        } catch (DateTimeParseException exception) {
+            throw ApiException.badRequest("INVALID_DATE", "La fecha de nacimiento no es válida");
+        }
     }
 }

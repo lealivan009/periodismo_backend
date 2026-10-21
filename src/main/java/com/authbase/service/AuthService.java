@@ -14,12 +14,16 @@ import com.authbase.domain.PasswordResetToken;
 import com.authbase.domain.RefreshToken;
 import com.authbase.domain.Role;
 import com.authbase.domain.User;
+import com.authbase.domain.VerificationStatus;
+import com.authbase.helpers.SocialLinks;
 import com.authbase.helpers.UserProfiles;
 import com.authbase.error.ApiException;
 import com.authbase.security.JwtIssuer;
 import com.authbase.security.PasswordHasher;
 import com.authbase.security.PasswordPolicy;
 import com.authbase.security.TokenService;
+import com.authbase.service.storage.MediaStore;
+import com.authbase.service.storage.UploadedFile;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -39,6 +43,7 @@ public class AuthService {
     private final JwtIssuer jwtIssuer;
     private final SettingsService settingsService;
     private final MailService mailService;
+    private final MediaStore mediaStore;
 
     public AuthService(
             AuthProperties properties,
@@ -47,7 +52,8 @@ public class AuthService {
             TokenService tokenService,
             JwtIssuer jwtIssuer,
             SettingsService settingsService,
-            MailService mailService
+            MailService mailService,
+            MediaStore mediaStore
     ) {
         this.properties = properties;
         this.passwordHasher = passwordHasher;
@@ -56,6 +62,7 @@ public class AuthService {
         this.jwtIssuer = jwtIssuer;
         this.settingsService = settingsService;
         this.mailService = mailService;
+        this.mediaStore = mediaStore;
     }
 
     @Transactional
@@ -78,7 +85,8 @@ public class AuthService {
         user.firstName = request.firstName().trim();
         user.lastName = request.lastName().trim();
         user.passwordHash = passwordHasher.hash(request.password());
-        user.role = Role.USER;
+        user.role = Role.READER;
+        user.verificationStatus = VerificationStatus.NONE;
         UserProfiles.set(
                 user,
                 request.documentNumber(),
@@ -92,6 +100,61 @@ public class AuthService {
         user.persist();
 
         return issueSession(user);
+    }
+
+    @Transactional
+    public AuthResponse registerJournalist(RegisterRequest request, String specialty, String bio, UploadedFile degree) {
+        if (!settingsService.current().allowPublicRegistration) {
+            throw ApiException.forbidden(
+                    "REGISTRATION_DISABLED",
+                    "El registro público está deshabilitado. Pedile a un administrador que cree tu cuenta."
+            );
+        }
+        passwordPolicy.validate(request.password());
+        String specialtyClean = requireSpecialty(specialty);
+        if (degree == null || degree.bytes() == null || degree.bytes().length == 0) {
+            throw ApiException.badRequest("DEGREE_REQUIRED", "Adjuntá el título o la matrícula profesional");
+        }
+
+        String email = User.normalizeEmail(request.email());
+        if (User.findByEmail(email).isPresent()) {
+            throw ApiException.conflict("EMAIL_ALREADY_REGISTERED", "Ya existe una cuenta con ese email");
+        }
+
+        User user = new User();
+        user.email = email;
+        user.firstName = request.firstName().trim();
+        user.lastName = request.lastName().trim();
+        user.passwordHash = passwordHasher.hash(request.password());
+        user.role = Role.JOURNALIST;
+        user.verificationStatus = VerificationStatus.PENDING;
+        user.specialty = specialtyClean;
+        user.bio = cleanBio(bio);
+        UserProfiles.set(
+                user,
+                request.documentNumber(),
+                request.phone(),
+                request.birthDate(),
+                request.street(),
+                request.city(),
+                request.province(),
+                request.postalCode()
+        );
+        user.persist();
+        user.degreeDocumentUrl = mediaStore.saveDegree(user.id, degree.fileName(), degree.contentType(), degree.bytes());
+        return issueSession(user);
+    }
+
+    @Transactional
+    public UserResponse updateAvatar(String userId, UploadedFile file) {
+        User user = requireUser(userId);
+        if (file == null || file.bytes() == null || file.bytes().length == 0) {
+            throw ApiException.badRequest("AVATAR_REQUIRED", "Elegí una imagen");
+        }
+        String previous = user.avatarUrl;
+        user.avatarUrl = mediaStore.saveImage("avatars", user.id, file.fileName(), file.contentType(), file.bytes());
+        mediaStore.deleteQuietly(previous);
+        return UserResponse.from(user);
     }
 
     @Transactional
@@ -185,6 +248,27 @@ public class AuthService {
                 request.province(),
                 request.postalCode()
         );
+        if (request.bio() != null) {
+            user.bio = cleanBio(request.bio());
+        }
+        if (request.specialty() != null) {
+            String specialty = UserProfiles.clean(request.specialty());
+            if (specialty != null && specialty.length() < 2) {
+                throw ApiException.badRequest("SPECIALTY_REQUIRED", "La especialidad debe tener entre 2 y 120 caracteres");
+            }
+            user.specialty = specialty;
+        }
+        if (user.role == Role.JOURNALIST) {
+            if (request.xUrl() != null) {
+                user.xUrl = SocialLinks.x(request.xUrl());
+            }
+            if (request.instagramUrl() != null) {
+                user.instagramUrl = SocialLinks.instagram(request.instagramUrl());
+            }
+            if (request.facebookUrl() != null) {
+                user.facebookUrl = SocialLinks.facebook(request.facebookUrl());
+            }
+        }
         return UserResponse.from(user);
     }
 
@@ -259,6 +343,22 @@ public class AuthService {
         stored.used = true;
         PasswordResetToken.invalidateAllForUser(user);
         RefreshToken.revokeAllForUser(user);
+    }
+
+    private static String requireSpecialty(String specialty) {
+        String clean = UserProfiles.clean(specialty);
+        if (clean == null || clean.length() < 2 || clean.length() > 120) {
+            throw ApiException.badRequest("SPECIALTY_REQUIRED", "La especialidad debe tener entre 2 y 120 caracteres");
+        }
+        return clean;
+    }
+
+    private static String cleanBio(String bio) {
+        String clean = UserProfiles.clean(bio);
+        if (clean != null && clean.length() > 4000) {
+            throw ApiException.badRequest("BIO_TOO_LONG", "La descripción puede tener hasta 4000 caracteres");
+        }
+        return clean;
     }
 
     private User requireUser(String userId) {

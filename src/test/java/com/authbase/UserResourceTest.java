@@ -49,7 +49,7 @@ class UserResourceTest {
                           "password": "Secret123",
                           "firstName": "Usuario",
                           "lastName": "Gestionado",
-                          "role": "USER"
+                          "role": "READER"
                         }
                         """.formatted(email))
                 .when()
@@ -57,7 +57,7 @@ class UserResourceTest {
                 .then()
                 .statusCode(200)
                 .body("email", equalTo(email))
-                .body("role", equalTo("USER"))
+                .body("role", equalTo("READER"))
                 .body("enabled", equalTo(true))
                 .extract()
                 .path("id");

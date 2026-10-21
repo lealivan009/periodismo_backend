@@ -7,6 +7,7 @@ import com.authbase.api.dto.UserResponse;
 import com.authbase.domain.RefreshToken;
 import com.authbase.domain.Role;
 import com.authbase.domain.User;
+import com.authbase.domain.VerificationStatus;
 import com.authbase.helpers.UserProfiles;
 import com.authbase.error.ApiException;
 import com.authbase.security.PasswordHasher;
@@ -88,7 +89,10 @@ public class UserService {
         user.firstName = request.firstName().trim();
         user.lastName = request.lastName().trim();
         user.passwordHash = passwordHasher.hash(request.password());
-        user.role = request.role() == null ? Role.USER : request.role();
+        user.role = request.role() == null ? Role.READER : request.role();
+        user.verificationStatus = user.role == Role.JOURNALIST
+                ? VerificationStatus.APPROVED
+                : VerificationStatus.NONE;
         UserProfiles.set(
                 user,
                 request.documentNumber(),
@@ -135,7 +139,13 @@ public class UserService {
             if (user.role == Role.ADMIN && request.role() != Role.ADMIN && adminCount() <= 1) {
                 throw ApiException.badRequest("LAST_ADMIN", "Tiene que quedar al menos un administrador");
             }
+            Role previous = user.role;
             user.role = request.role();
+            if (user.role == Role.JOURNALIST) {
+                user.verificationStatus = VerificationStatus.APPROVED;
+            } else if (previous == Role.JOURNALIST) {
+                user.verificationStatus = VerificationStatus.NONE;
+            }
             RefreshToken.revokeAllForUser(user);
         }
         if (request.enabled() != null && request.enabled() != user.enabled) {

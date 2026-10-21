@@ -31,6 +31,21 @@ public record UpdateProfileRequest(
         String province,
 
         @Size(max = 20, message = "El código postal es demasiado largo")
-        String postalCode
+        String postalCode,
+
+        @Size(max = 4000, message = "La descripción puede tener hasta 4000 caracteres")
+        String bio,
+
+        @Size(max = 120, message = "La especialidad es demasiado larga")
+        String specialty,
+
+        @Size(max = 300, message = "El enlace de X es demasiado largo")
+        String xUrl,
+
+        @Size(max = 300, message = "El enlace de Instagram es demasiado largo")
+        String instagramUrl,
+
+        @Size(max = 300, message = "El enlace de Facebook es demasiado largo")
+        String facebookUrl
 ) {
 }

@@ -7,9 +7,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -60,9 +63,37 @@ public class User extends PanacheEntityBase {
     @Column(name = "postal_code", length = 20)
     public String postalCode;
 
+    @Column(name = "avatar_url", length = 500)
+    public String avatarUrl;
+
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Column(name = "bio", columnDefinition = "TEXT")
+    public String bio;
+
+    @Column(name = "specialty", length = 120)
+    public String specialty;
+
+    @Column(name = "x_url", length = 300)
+    public String xUrl;
+
+    @Column(name = "instagram_url", length = 300)
+    public String instagramUrl;
+
+    @Column(name = "facebook_url", length = 300)
+    public String facebookUrl;
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", length = 32)
+    public VerificationStatus verificationStatus = VerificationStatus.NONE;
+
+    @Column(name = "degree_document_url", length = 500)
+    public String degreeDocumentUrl;
+
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 32)
-    public Role role = Role.USER;
+    public Role role = Role.READER;
 
     @Column(name = "enabled", nullable = false)
     public boolean enabled = true;
@@ -84,6 +115,13 @@ public class User extends PanacheEntityBase {
 
     @Column(name = "deleted_at")
     public Instant deletedAt;
+
+    @PostLoad
+    void onLoad() {
+        if (verificationStatus == null) {
+            verificationStatus = VerificationStatus.NONE;
+        }
+    }
 
     @PrePersist
     void onCreate() {
@@ -117,6 +155,13 @@ public class User extends PanacheEntityBase {
 
     public boolean isDeleted() {
         return deletedAt != null;
+    }
+
+    public boolean canPublish() {
+        return role == Role.JOURNALIST
+                && verificationStatus == VerificationStatus.APPROVED
+                && enabled
+                && !isDeleted();
     }
 
     public boolean isLocked(Instant now) {

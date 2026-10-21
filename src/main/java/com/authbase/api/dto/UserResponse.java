@@ -2,6 +2,8 @@ package com.authbase.api.dto;
 
 import com.authbase.domain.Role;
 import com.authbase.domain.User;
+import com.authbase.domain.VerificationStatus;
+import com.authbase.helpers.MediaUrls;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -22,7 +24,14 @@ public record UserResponse(
         boolean enabled,
         Instant lockedUntil,
         Instant createdAt,
-        Instant lastLoginAt
+        Instant lastLoginAt,
+        String avatarUrl,
+        String bio,
+        String specialty,
+        String xUrl,
+        String instagramUrl,
+        String facebookUrl,
+        VerificationStatus verificationStatus
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -41,7 +50,14 @@ public record UserResponse(
                 user.enabled,
                 user.lockedUntil,
                 user.createdAt,
-                user.lastLoginAt
+                user.lastLoginAt,
+                MediaUrls.avatar(user),
+                user.bio,
+                user.specialty,
+                user.xUrl,
+                user.instagramUrl,
+                user.facebookUrl,
+                user.verificationStatus == null ? VerificationStatus.NONE : user.verificationStatus
         );
     }
 }
