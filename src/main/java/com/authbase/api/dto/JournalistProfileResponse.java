@@ -14,6 +14,7 @@ public record JournalistProfileResponse(
         String facebookUrl,
         long followers,
         long subscribers,
+        long articleCount,
         boolean following,
         boolean subscribed,
         List<ArticleSummary> articles

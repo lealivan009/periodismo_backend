@@ -129,6 +129,10 @@ public class ArticleService {
                 .toList();
     }
 
+    public long countPublished(String authorId) {
+        return Article.count("author.id = ?1 and status = ?2", authorId, ArticleStatus.PUBLISHED);
+    }
+
     @Transactional
     public List<ArticleSummary> byAuthorPublished(String authorId) {
         return Article.<Article>find(

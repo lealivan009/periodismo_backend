@@ -58,6 +58,7 @@ public class JournalistService {
                 journalist.facebookUrl,
                 Follow.count("journalist.id", journalist.id),
                 Subscription.count("journalist.id", journalist.id),
+                articleService.countPublished(journalist.id),
                 viewer != null && Follow.count("follower.id = ?1 and journalist.id = ?2", viewer.id, journalist.id) > 0,
                 viewer != null && Subscription.count("subscriber.id = ?1 and journalist.id = ?2", viewer.id, journalist.id) > 0,
                 articleService.byAuthorPublished(journalist.id)
