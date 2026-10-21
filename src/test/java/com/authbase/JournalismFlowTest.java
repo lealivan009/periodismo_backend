@@ -119,12 +119,42 @@ class JournalismFlowTest {
                 .post("/api/articles/slug/" + slug + "/view")
                 .then()
                 .statusCode(200)
-                .body("viewCount", equalTo(2));
+                .body("viewCount", equalTo(1));
 
         given()
                 .header("Authorization", "Bearer " + journalistToken)
                 .contentType(ContentType.JSON)
                 .body("{\"visitorId\":\"22222222-2222-4222-8222-222222222222\"}")
+                .when()
+                .post("/api/articles/slug/" + slug + "/view")
+                .then()
+                .statusCode(200)
+                .body("viewCount", equalTo(2));
+
+        given()
+                .header("Authorization", "Bearer " + journalistToken)
+                .contentType(ContentType.JSON)
+                .body("{\"visitorId\":\"55555555-5555-4555-8555-555555555555\"}")
+                .when()
+                .post("/api/articles/slug/" + slug + "/view")
+                .then()
+                .statusCode(200)
+                .body("viewCount", equalTo(2));
+
+        given()
+                .header("Authorization", "Bearer " + readerToken)
+                .contentType(ContentType.JSON)
+                .body("{\"visitorId\":\"33333333-3333-4333-8333-333333333333\"}")
+                .when()
+                .post("/api/articles/slug/" + slug + "/view")
+                .then()
+                .statusCode(200)
+                .body("viewCount", equalTo(3));
+
+        given()
+                .header("Authorization", "Bearer " + readerToken)
+                .contentType(ContentType.JSON)
+                .body("{\"visitorId\":\"44444444-4444-4444-8444-444444444444\"}")
                 .when()
                 .post("/api/articles/slug/" + slug + "/view")
                 .then()
@@ -214,6 +244,48 @@ class JournalismFlowTest {
                 .body("subscribers", greaterThanOrEqualTo(1))
                 .body("following", equalTo(true))
                 .body("articles.slug", hasItem(slug));
+
+        given()
+                .header("Authorization", "Bearer " + journalistToken)
+                .when()
+                .get("/api/articles/stats")
+                .then()
+                .statusCode(200)
+                .body("totalViews", equalTo(3))
+                .body("viewsThisMonth", equalTo(3))
+                .body("publishedArticles", equalTo(2))
+                .body("followers", greaterThanOrEqualTo(1))
+                .body("subscribers", greaterThanOrEqualTo(1))
+                .body("months.size()", equalTo(12));
+
+        given()
+                .header("Authorization", "Bearer " + readerToken)
+                .when()
+                .get("/api/admin/journalists/" + journalistId + "/stats")
+                .then()
+                .statusCode(403);
+
+        given()
+                .header("Authorization", "Bearer " + adminToken)
+                .when()
+                .get("/api/admin/journalists/" + journalistId + "/stats")
+                .then()
+                .statusCode(200)
+                .body("totalViews", equalTo(3))
+                .body("authorName", equalTo("Lara Gomez"))
+                .body("publicProfile", equalTo(true));
+
+        given()
+                .header("Authorization", "Bearer " + adminToken)
+                .when()
+                .get("/api/admin/overview")
+                .then()
+                .statusCode(200)
+                .body("publishedArticles", greaterThanOrEqualTo(2))
+                .body("viewsThisMonth", greaterThanOrEqualTo(3))
+                .body("professionals", greaterThanOrEqualTo(1))
+                .body("months.size()", equalTo(12))
+                .body("ranking.name", hasItem("Lara Gomez"));
     }
 
     private static String registerReader(String email) {

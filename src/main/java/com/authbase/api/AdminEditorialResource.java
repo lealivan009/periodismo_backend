@@ -1,6 +1,8 @@
 package com.authbase.api;
 
 import com.authbase.api.dto.ArticleSummary;
+import com.authbase.api.dto.AdminOverviewResponse;
+import com.authbase.api.dto.AuthorStatsResponse;
 import com.authbase.api.dto.CategoryResponse;
 import com.authbase.api.dto.CreateCategoryRequest;
 import com.authbase.api.dto.JournalistApplicationResponse;
@@ -50,6 +52,18 @@ public class AdminEditorialResource {
         this.categoryService = categoryService;
         this.mediaStore = mediaStore;
         this.currentUser = currentUser;
+    }
+
+    @GET
+    @Path("/overview")
+    public AdminOverviewResponse overview() {
+        return articleService.overview();
+    }
+
+    @GET
+    @Path("/journalists/{id}/stats")
+    public AuthorStatsResponse stats(@PathParam("id") String id) {
+        return articleService.stats(journalistService.requireJournalist(id));
     }
 
     @GET

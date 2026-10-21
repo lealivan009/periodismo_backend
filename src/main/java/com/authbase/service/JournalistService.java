@@ -217,6 +217,10 @@ public class JournalistService {
         return user;
     }
 
+    public User requireJournalist(String id) {
+        return requireApplication(id);
+    }
+
     private User requireApplication(String id) {
         User user = User.findActiveById(id)
                 .orElseThrow(() -> ApiException.notFound("USER_NOT_FOUND", "No se encontró el periodista"));

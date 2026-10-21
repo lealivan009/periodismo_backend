@@ -3,6 +3,7 @@ package com.authbase.api;
 import com.authbase.api.dto.ArticleResponse;
 import com.authbase.api.dto.ArticleSummary;
 import com.authbase.api.dto.ArticleWriteRequest;
+import com.authbase.api.dto.AuthorStatsResponse;
 import com.authbase.api.dto.RecordViewRequest;
 import com.authbase.api.dto.ViewCountResponse;
 import com.authbase.domain.User;
@@ -55,6 +56,13 @@ public class ArticleResource {
     }
 
     @GET
+    @Path("/stats")
+    @Authenticated
+    public AuthorStatsResponse stats() {
+        return articleService.stats(currentUser.requireApprovedJournalist());
+    }
+
+    @GET
     @Path("/slug/{slug}")
     public ArticleResponse bySlug(@PathParam("slug") String slug) {
         return articleService.publishedBySlug(slug);
@@ -64,7 +72,8 @@ public class ArticleResource {
     @Path("/slug/{slug}/view")
     @Consumes(MediaType.APPLICATION_JSON)
     public ViewCountResponse view(@PathParam("slug") String slug, RecordViewRequest request) {
-        return new ViewCountResponse(articleService.recordView(slug));
+        String visitorId = request == null ? null : request.visitorId();
+        return new ViewCountResponse(articleService.recordView(slug, currentUser.optional(), visitorId));
     }
 
     @GET
