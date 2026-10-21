@@ -245,6 +245,7 @@ class JournalismFlowTest {
                 .multiPart("firstName", "Lara")
                 .multiPart("lastName", "Gomez")
                 .multiPart("specialty", "Futbol")
+                .multiPart("username", "laragomez")
                 .multiPart("degree", "titulo.pdf", pdf, "application/pdf")
                 .when()
                 .post("/api/auth/register-journalist")
@@ -253,6 +254,7 @@ class JournalismFlowTest {
                 .body("accessToken", notNullValue())
                 .body("user.role", equalTo("JOURNALIST"))
                 .body("user.verificationStatus", equalTo("PENDING"))
+                .body("user.username", equalTo("laragomez"))
                 .extract()
                 .path("accessToken");
     }

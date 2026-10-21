@@ -13,6 +13,7 @@ public record ArticleSummary(
         String categorySlug,
         String authorId,
         String authorName,
-        long viewCount
+        long viewCount,
+        String authorUsername
 ) {
 }

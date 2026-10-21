@@ -66,6 +66,9 @@ public class User extends PanacheEntityBase {
     @Column(name = "avatar_url", length = 500)
     public String avatarUrl;
 
+    @Column(name = "username", unique = true, length = 30)
+    public String username;
+
     @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(name = "bio", columnDefinition = "TEXT")
     public String bio;

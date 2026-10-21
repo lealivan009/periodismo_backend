@@ -46,6 +46,9 @@ public record UpdateProfileRequest(
         String instagramUrl,
 
         @Size(max = 300, message = "El enlace de Facebook es demasiado largo")
-        String facebookUrl
+        String facebookUrl,
+
+        @Size(max = 30, message = "El usuario puede tener hasta 30 caracteres")
+        String username
 ) {
 }

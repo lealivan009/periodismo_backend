@@ -23,7 +23,8 @@ public record ArticleResponse(
         String authorId,
         String authorName,
         String authorSpecialty,
-        long viewCount
+        long viewCount,
+        String authorUsername
 ) {
     public static ArticleResponse from(Article article) {
         return new ArticleResponse(
@@ -43,7 +44,8 @@ public record ArticleResponse(
                 article.author.id,
                 article.author.displayName(),
                 article.author.specialty,
-                article.viewCount == null ? 0L : article.viewCount
+                article.viewCount == null ? 0L : article.viewCount,
+                article.author.username
         );
     }
 
@@ -59,7 +61,8 @@ public record ArticleResponse(
                 categorySlug,
                 authorId,
                 authorName,
-                viewCount
+                viewCount,
+                authorUsername
         );
     }
 }

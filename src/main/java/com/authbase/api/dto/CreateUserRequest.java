@@ -47,6 +47,9 @@ public record CreateUserRequest(
         String province,
 
         @Size(max = 20, message = "El código postal es demasiado largo")
-        String postalCode
+        String postalCode,
+
+        @Size(max = 30, message = "El usuario puede tener hasta 30 caracteres")
+        String username
 ) {
 }

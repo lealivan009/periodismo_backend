@@ -70,6 +70,7 @@ public class AuthResource {
             @RestForm String lastName,
             @RestForm String specialty,
             @RestForm String bio,
+            @RestForm String username,
             @RestForm String documentNumber,
             @RestForm String phone,
             @RestForm String birthDate,
@@ -98,7 +99,7 @@ public class AuthResource {
             throw ApiException.badRequest("VALIDATION", violation.getMessage());
         }
         UploadedFile file = Uploads.read(degree);
-        return authService.registerJournalist(request, specialty, bio, file);
+        return authService.registerJournalist(request, specialty, bio, username, file);
     }
 
     @POST

@@ -9,6 +9,7 @@ import com.authbase.domain.Role;
 import com.authbase.domain.User;
 import com.authbase.domain.VerificationStatus;
 import com.authbase.helpers.UserProfiles;
+import com.authbase.helpers.Usernames;
 import com.authbase.error.ApiException;
 import com.authbase.security.PasswordHasher;
 import com.authbase.security.PasswordPolicy;
@@ -48,6 +49,7 @@ public class UserService {
                         or lower(firstName) like :q
                         or lower(lastName) like :q
                         or lower(coalesce(phone, '')) like :q
+                        or lower(coalesce(username, '')) like :q
                      )
                     """);
             params.put("q", "%" + q.trim().toLowerCase() + "%");
@@ -103,6 +105,12 @@ public class UserService {
                 request.province(),
                 request.postalCode()
         );
+        if (user.role == Role.JOURNALIST) {
+            if (request.username() == null || request.username().isBlank()) {
+                throw ApiException.badRequest("USERNAME_REQUIRED", "El usuario es obligatorio");
+            }
+            Usernames.claim(user, request.username());
+        }
         user.persist();
         return UserResponse.from(user);
     }
@@ -143,6 +151,7 @@ public class UserService {
             user.role = request.role();
             if (user.role == Role.JOURNALIST) {
                 user.verificationStatus = VerificationStatus.APPROVED;
+                Usernames.ensure(user);
             } else if (previous == Role.JOURNALIST) {
                 user.verificationStatus = VerificationStatus.NONE;
             }

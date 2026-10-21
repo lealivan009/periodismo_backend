@@ -31,7 +31,8 @@ public record UserResponse(
         String xUrl,
         String instagramUrl,
         String facebookUrl,
-        VerificationStatus verificationStatus
+        VerificationStatus verificationStatus,
+        String username
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -57,7 +58,8 @@ public record UserResponse(
                 user.xUrl,
                 user.instagramUrl,
                 user.facebookUrl,
-                user.verificationStatus == null ? VerificationStatus.NONE : user.verificationStatus
+                user.verificationStatus == null ? VerificationStatus.NONE : user.verificationStatus,
+                user.username
         );
     }
 }

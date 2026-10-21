@@ -17,6 +17,7 @@ import com.authbase.domain.User;
 import com.authbase.domain.VerificationStatus;
 import com.authbase.helpers.SocialLinks;
 import com.authbase.helpers.UserProfiles;
+import com.authbase.helpers.Usernames;
 import com.authbase.error.ApiException;
 import com.authbase.security.JwtIssuer;
 import com.authbase.security.PasswordHasher;
@@ -103,7 +104,13 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse registerJournalist(RegisterRequest request, String specialty, String bio, UploadedFile degree) {
+    public AuthResponse registerJournalist(
+            RegisterRequest request,
+            String specialty,
+            String bio,
+            String username,
+            UploadedFile degree
+    ) {
         if (!settingsService.current().allowPublicRegistration) {
             throw ApiException.forbidden(
                     "REGISTRATION_DISABLED",
@@ -130,6 +137,10 @@ public class AuthService {
         user.verificationStatus = VerificationStatus.PENDING;
         user.specialty = specialtyClean;
         user.bio = cleanBio(bio);
+        if (username == null || username.isBlank()) {
+            throw ApiException.badRequest("USERNAME_REQUIRED", "El usuario es obligatorio");
+        }
+        Usernames.claim(user, username);
         UserProfiles.set(
                 user,
                 request.documentNumber(),
@@ -267,6 +278,14 @@ public class AuthService {
             }
             if (request.facebookUrl() != null) {
                 user.facebookUrl = SocialLinks.facebook(request.facebookUrl());
+            }
+            if (request.username() != null) {
+                if (request.username().isBlank()) {
+                    throw ApiException.badRequest("USERNAME_REQUIRED", "El usuario es obligatorio");
+                }
+                Usernames.claim(user, request.username());
+            } else if (user.username == null || user.username.isBlank()) {
+                Usernames.ensure(user);
             }
         }
         return UserResponse.from(user);

@@ -1,7 +1,10 @@
 package com.authbase.service;
 
 import com.authbase.domain.Category;
+import com.authbase.domain.Role;
+import com.authbase.domain.User;
 import com.authbase.helpers.Slugs;
+import com.authbase.helpers.Usernames;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -30,6 +33,15 @@ public class EditorialBootstrap {
         widenArticleContent();
         widenJournalistBio();
         seedSections();
+        seedUsernames();
+    }
+
+    private void seedUsernames() {
+        List<User> pending = User.list("role = ?1 and username is null", Role.JOURNALIST);
+        for (User user : pending) {
+            Usernames.ensure(user);
+            entityManager.flush();
+        }
     }
 
     private void seedSections() {

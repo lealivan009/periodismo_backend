@@ -4,6 +4,7 @@ public record JournalistCardResponse(
         String id,
         String firstName,
         String lastName,
+        String username,
         String bio,
         String specialty,
         String avatarUrl,

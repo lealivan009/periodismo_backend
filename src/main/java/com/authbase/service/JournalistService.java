@@ -18,6 +18,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 @ApplicationScoped
 public class JournalistService {
@@ -50,6 +52,7 @@ public class JournalistService {
                 journalist.id,
                 journalist.firstName,
                 journalist.lastName,
+                journalist.username,
                 journalist.bio,
                 journalist.specialty,
                 MediaUrls.avatar(journalist),
@@ -170,6 +173,7 @@ public class JournalistService {
                 journalist.id,
                 journalist.firstName,
                 journalist.lastName,
+                journalist.username,
                 journalist.bio,
                 journalist.specialty,
                 MediaUrls.avatar(journalist),
@@ -190,8 +194,22 @@ public class JournalistService {
         );
     }
 
-    private User requirePublic(String id) {
-        User user = User.findActiveById(id)
+    private Optional<User> findPublic(String key) {
+        if (key == null || key.isBlank()) {
+            return Optional.empty();
+        }
+        if (key.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+            return User.findActiveById(key);
+        }
+        String username = key.trim().toLowerCase(Locale.ROOT);
+        if (username.startsWith("@")) {
+            username = username.substring(1);
+        }
+        return User.find("username = ?1 and deletedAt is null", username).firstResultOptional();
+    }
+
+    private User requirePublic(String key) {
+        User user = findPublic(key)
                 .orElseThrow(() -> ApiException.notFound("JOURNALIST_NOT_FOUND", "No se encontró el periodista"));
         if (user.role != Role.JOURNALIST || user.verificationStatus != VerificationStatus.APPROVED || !user.enabled) {
             throw ApiException.notFound("JOURNALIST_NOT_FOUND", "No se encontró el periodista");
