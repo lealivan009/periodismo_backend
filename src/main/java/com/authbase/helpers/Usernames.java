@@ -11,7 +11,7 @@ public final class Usernames {
 
     private static final Pattern PATTERN = Pattern.compile("[a-z0-9._]{3,30}");
     private static final Set<String> RESERVED = Set.of(
-            "admin", "api", "app", "login", "registro", "periodistas", "portada", "categoria", "nota", "media"
+            "admin", "api", "app", "login", "registro", "periodistas", "profesional", "profesionales", "portada", "categoria", "nota", "media"
     );
 
     private Usernames() {
